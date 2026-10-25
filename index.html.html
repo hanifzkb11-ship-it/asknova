@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AskNova — AI Search Assistant</title>
+<meta name="description" content="Ask anything. Get clear answers with sources." />
+<style>
+  :root{
+    --bg:#0a0e16;--bg-glow-1:#1b2a4a;--bg-glow-2:#2a1b4a;
+    --surface:#111827;--surface-2:#182133;--border:#243044;
+    --text:#e9eefb;--muted:#8b9ab5;--accent:#4f8cff;--accent-2:#8b5cff;
+    --ok:#22c55e;--shadow:0 20px 60px rgba(0,0,0,.45);
+  }
+  [data-theme="light"]{
+    --bg:#f6f8fc;--bg-glow-1:#dbe6ff;--bg-glow-2:#e8dcff;
+    --surface:#ffffff;--surface-2:#f1f4fa;--border:#e2e8f4;
+    --text:#0f172a;--muted:#5b6b88;--accent:#2563eb;--accent-2:#7c3aed;
+    --shadow:0 20px 60px rgba(15,23,42,.10);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;
+    -webkit-font-smoothing:antialiased;transition:background .3s,color .3s;overflow-x:hidden;
+  }
+  body::before,body::after{
+    content:"";position:fixed;width:60vw;height:60vw;border-radius:50%;
+    filter:blur(120px);opacity:.45;z-index:0;pointer-events:none;
+  }
+  body::before{background:var(--bg-glow-1);top:-25vw;left:-15vw}
+  body::after{background:var(--bg-glow-2);bottom:-30vw;right:-20vw}
+  header{
+    position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;
+    padding:18px 22px;max-width:1000px;width:100%;margin:0 auto;
+  }
+  .logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:1.05rem;letter-spacing:-.02em}
+  .logo-mark{
+    width:32px;height:32px;border-radius:10px;
+    background:linear-gradient(135deg,var(--accent),var(--accent-2));
+    display:grid;place-items:center;color:#fff;font-size:15px;font-weight:800;
+    box-shadow:0 6px 18px rgba(79,140,255,.4);
+  }
+  .logo span{color:var(--muted);font-weight:500;font-size:.78rem;margin-left:2px}
+  .icon-btn{
+    background:var(--surface);border:1px solid var(--border);color:var(--text);
+    width:40px;height:40px;border-radius:12px;display:grid;place-items:center;
+    cursor:pointer;font-size:16px;transition:.2s;
+  }
+  .icon-btn:hover{background:var(--surface-2);transform:translateY(-1px)}
+  main{position:relative;z-index:2;flex:1;width:100%;max-width:820px;margin:0 auto;padding:10px 22px 60px}
+  .hero{text-align:center;padding:38px 0 26px}
+  .hero h1{font-size:clamp(1.9rem,5.5vw,3rem);line-height:1.12;letter-spacing:-.035em;font-weight:800;margin-bottom:14px}
+  .hero h1 em{
+    font-style:normal;background:linear-gradient(120deg,var(--accent),var(--accent-2));
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  }
+  .hero p{color:var(--muted);font-size:1rem;max-width:520px;margin:0 auto;line-height:1.6}
+  .search-wrap{position:relative;margin:26px 0 0}
+  .search-box{
+    display:flex;align-items:center;gap:10px;background:var(--surface);
+    border:1px solid var(--border);border-radius:18px;padding:8px 8px 8px 18px;
+    box-shadow:var(--shadow);transition:border-color .2s,box-shadow .2s,transform .2s;
+  }
+  .search-box:focus-within{border-color:var(--accent);box-shadow:0 0 0 4px rgba(79,140,255,.15),var(--shadow)}
+  .search-box svg{flex-shrink:0;color:var(--muted)}
+  #query{
+    flex:1;background:transparent;border:none;outline:none;color:var(--text);
+    font-size:1rem;padding:12px 0;font-family:inherit;min-width:0;
+  }
+  #query::placeholder{color:var(--muted)}
+  #askBtn{
+    flex-shrink:0;background:linear-gradient(135deg,var(--accent),var(--accent-2));
+    color:#fff;border:none;padding:12px 22px;border-radius:13px;
+    font-size:.92rem;font-weight:600;cursor:pointer;font-family:inherit;
+    transition:.2s;display:flex;align-items:center;gap:7px;
+  }
+  #askBtn:hover:not(:disabled){transform:translateY(-1px);filter:brightness(1.08)}
+  #askBtn:disabled{opacity:.55;cursor:not-allowed}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:18px}
+  .chip{
+    background:var(--surface);border:1px solid var(--border);color:var(--muted);
+    padding:8px 14px;border-radius:999px;font-size:.82rem;cursor:pointer;
+    font-family:inherit;transition:.18s;
+  }
+  .chip:hover{color:var(--text);border-color:var(--accent);transform:translateY(-1px)}
+  #result{margin-top:30px;display:none}
+  #result.show{display:block;animation:fadeUp .45s ease both}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+  .card{
+    background:var(--surface);border:1px solid var(--border);border-radius:18px;
+    padding:24px;box-shadow:var(--shadow);
+  }
+  .answer-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+  .answer-head h2{
+    font-size:.78rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+    color:var(--muted);display:flex;align-items:center;gap:8px;
+  }
+  .answer-head h2::before{
+    content:"";width:7px;height:7px;border-radius:50%;
+    background:linear-gradient(135deg,var(--accent),var(--accent-2));
+  }
+  .copy-btn{
+    background:transparent;border:1px solid var(--border);color:var(--muted);
+    font-size:.76rem;font-family:inherit;padding:6px 12px;border-radius:9px;
+    cursor:pointer;transition:.18s;
+  }
+  .copy-btn:hover{color:var(--text);border-color:var(--accent)}
+  #answerText{font-size:.97rem;line-height:1.75;white-space:pre-wrap;word-wrap:break-word;color:var(--text)}
+  #answerText.typing::after{content:"▍";color:var(--accent);animation:blink .9s steps(1) infinite;margin-left:1px}
+  @keyframes blink{50%{opacity:0}}
+  .loading{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:.9rem;padding:6px 0}
+  .dots{display:flex;gap:4px}
+  .dots i{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:bounce 1.3s infinite ease-in-out}
+  .dots i:nth-child(2){animation-delay:.16s}
+  .dots i:nth-child(3){animation-delay:.32s}
+  @keyframes bounce{0%,80%,100%{transform:translateY(0);opacity:.4}40%{transform:translateY(-6px);opacity:1}}
+  .sources{margin-top:22px}
+  .sources h3{font-size:.78rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+  .source-list{display:grid;gap:10px}
+  .source{
+    display:flex;gap:12px;align-items:flex-start;background:var(--surface-2);
+    border:1px solid var(--border);border-radius:13px;padding:13px 15px;
+    text-decoration:none;color:inherit;transition:.18s;
+  }
+  .source:hover{border-color:var(--accent);transform:translateX(3px)}
+  .source-num{
+    flex-shrink:0;width:22px;height:22px;border-radius:7px;
+    background:linear-gradient(135deg,var(--accent),var(--accent-2));
+    color:#fff;font-size:.72rem;font-weight:700;display:grid;place-items:center;margin-top:1px;
+  }
+  .source-body{min-width:0}
+  .source-title{font-size:.9rem;font-weight:600;margin-bottom:3px;line-height:1.35}
+  .source-snippet{font-size:.8rem;color:var(--muted);line-height:1.45}
+  .source-url{font-size:.72rem;color:var(--accent);margin-top:5px;word-break:break-all;opacity:.85}
+  .feedback{
+    display:flex;align-items:center;gap:10px;margin-top:20px;padding-top:18px;
+    border-top:1px solid var(--border);flex-wrap:wrap;
+  }
+  .feedback span{font-size:.82rem;color:var(--muted)}
+  .fb-btn{
+    background:var(--surface-2);border:1px solid var(--border);color:var(--muted);
+    padding:7px 14px;border-radius:10px;font-size:.82rem;font-family:inherit;
+    cursor:pointer;transition:.18s;display:flex;align-items:center;gap:6px;
+  }
+  .fb-btn:hover{color:var(--text);border-color:var(--accent)}
+  .fb-btn.active{background:rgba(34,197,94,.14);border-color:var(--ok);color:var(--ok)}
+  .fb-thanks{font-size:.8rem;color:var(--ok);display:none}
+  .fb-thanks.show{display:inline}
+  footer{
+    position:relative;z-index:2;text-align:center;padding:24px 22px 34px;
+    color:var(--muted);font-size:.78rem;line-height:1.7;max-width:820px;margin:0 auto;
+  }
+  footer strong{color:var(--text);font-weight:600}
+  @media (max-width:600px){
+    header{padding:14px 16px}
+    main{padding:6px 16px 40px}
+    .hero{padding:22px 0 18px}
+    .search-box{padding:6px 6px 6px 14px;border-radius:15px}
+    #query{font-size:.95rem;padding:11px 0}
+    #askBtn{padding:11px 16px;font-size:.85rem}
+    #askBtn .btn-label{display:none}
+    .card{padding:18px;border-radius:15px}
+    #answerText{font-size:.92rem}
+    .chip{font-size:.78rem;padding:7px 12px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">A</div>
+    AskNova <span>beta</span>
+  </div>
+  <button class="icon-btn" id="themeBtn" title="Toggle theme" aria-label="Toggle theme">🌙</button>
+</header>
+
+<main>
+  <section class="hero">
+    <h1>Ask anything.<br><em>Get answers with sources.</em></h1>
+    <p>An AI search assistant that reads the web and explains what it finds — clearly, and with links you can check.</p>
+
+    <div class="search-wrap">
+      <form class="search-box" id="searchForm" autocomplete="off">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+          <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
+        </svg>
+        <input id="query" type="text" placeholder="Ask anything… e.g. How does solar power work?" aria-label="Your question" />
+        <button type="submit" id="askBtn">
+          <span class="btn-label">Ask</span>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12h14M13 6l6 6-6 6"/>
+          </svg>
+        </button>
+      </form>
+    </div>
+
+    <div class="chips" id="chips">
+      <button class="chip" type="button">What is quantum computing?</button>
+      <button class="chip" type="button">How do I start learning Python?</button>
+      <button class="chip" type="button">Best time to visit Japan</button>
+      <button class="chip" type="button">How does a credit score work?</button>
+    </div>
+  </section>
+
+  <section id="result" aria-live="polite">
+    <div class="card">
+      <div class="answer-head">
+        <h2>Answer</h2>
+        <button class="copy-btn" id="copyBtn" type="button">Copy</button>
+      </div>
+
+      <div id="loading" class="loading" style="display:none">
+        <div class="dots"><i></i><i></i><i></i></div>
+        Searching the web…
+      </div>
+
+      <div id="answerText"></div>
+
+      <div class="sources" id="sourcesBox" style="display:none">
+        <h3>Sources</h3>
+        <div class="source-list" id="sourceList"></div>
+      </div>
+
+      <div class="feedback" id="feedbackBox" style="display:none">
+        <span>Was this helpful?</span>
+        <button class="fb-btn" id="upBtn" type="button">👍 Yes</button>
+        <button class="fb-btn" id="downBtn" type="button">👎 No</button>
+        <span class="fb-thanks" id="fbThanks">Thanks for the feedback!</span>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <strong>AskNova</strong> — AI answers can be wrong. Always verify important information.<br>
+  Not a substitute for professional medical, legal, or financial advice.
+</footer>
+
+<script>
+/* ============================================================
+   CONFIG — یہاں اصلی API استعمال ہو رہا ہے
+   ============================================================ */
+const CONFIG = {
+  useRealAPI: true,          // اصلی AI کے لیے true
+  apiUrl: "/api/search",     // بیک اینڈ کا راستہ
+  demoDelay: 850
+};
+
+const form       = document.getElementById("searchForm");
+const input      = document.getElementById("query");
+const askBtn     = document.getElementById("askBtn");
+const result     = document.getElementById("result");
+const loading    = document.getElementById("loading");
+const answerText = document.getElementById("answerText");
+const sourcesBox = document.getElementById("sourcesBox");
+const sourceList = document.getElementById("sourceList");
+const feedbackBox= document.getElementById("feedbackBox");
+const copyBtn    = document.getElementById("copyBtn");
+const upBtn      = document.getElementById("upBtn");
+const downBtn    = document.getElementById("downBtn");
+const fbThanks   = document.getElementById("fbThanks");
+const themeBtn   = document.getElementById("themeBtn");
+
+let streamToken = 0;
+let lastAnswer  = "";
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const query = input.value.trim();
+  if (!query) return;
+
+  const token = ++streamToken;
+
+  result.classList.add("show");
+  answerText.textContent = "";
+  answerText.classList.remove("typing");
+  sourcesBox.style.display = "none";
+  feedbackBox.style.display = "none";
+  fbThanks.classList.remove("show");
+  upBtn.classList.remove("active");
+  downBtn.classList.remove("active");
+  loading.style.display = "flex";
+  askBtn.disabled = true;
+
+  try {
+    const data = await askAI(query);
+    if (token !== streamToken) return;
+
+    loading.style.display = "none";
+    lastAnswer = data.answer;
+
+    answerText.classList.add("typing");
+    typeOut(answerText, data.answer, () => {
+      if (token !== streamToken) return;
+      answerText.classList.remove("typing");
+      renderSources(data.sources || []);
+      feedbackBox.style.display = "flex";
+    });
+
+  } catch (err) {
+    if (token !== streamToken) return;
+    loading.style.display = "none";
+    answerText.textContent =
+      "Sorry, something went wrong while fetching the answer.\n\n" +
+      "Details: " + err.message + "\n\n" +
+      "Please try again in a moment.";
+  } finally {
+    if (token === streamToken) askBtn.disabled = false;
+  }
+});
+
+async function askAI(query) {
+  if (CONFIG.useRealAPI) {
+    const res = await fetch(CONFIG.apiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query })
+    });
+    if (!res.ok) {
+      let msg = "HTTP " + res.status;
+      try { const j = await res.json(); if (j.error) msg = j.error; } catch {}
+      throw new Error(msg);
+    }
+    return await res.json();
+  }
+  await sleep(CONFIG.demoDelay);
+  return demoAnswer(query);
+}
+
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+function demoAnswer(query) {
+  const topic = query.trim().replace(/[?!.]+$/, "");
+  const enc = encodeURIComponent(topic);
+  return {
+    answer: `Demo mode: this is a placeholder answer about "${topic}". Set CONFIG.useRealAPI = true and connect your backend to get real answers with live sources.`,
+    sources: [
+      { title: `Wikipedia — ${topic}`, url: `https://en.wikipedia.org/w/index.php?search=${enc}`, snippet: "Encyclopedia overview." },
+      { title: `Google — ${topic}`, url: `https://www.google.com/search?q=${enc}`, snippet: "Search the live web." }
+    ]
+  };
+}
+
+function typeOut(el, text, done) {
+  let i = 0;
+  el.textContent = "";
+  const step = () => {
+    if (i >= text.length) { done && done(); return; }
+    el.textContent += text.slice(i, i + 3);
+    i += 3;
+    setTimeout(step, 12);
+  };
+  step();
+}
+
+function renderSources(sources) {
+  if (!sources.length) { sourcesBox.style.display = "none"; return; }
+  sourceList.innerHTML = "";
+  sources.forEach((s, i) => {
+    const a = document.createElement("a");
+    a.className = "source";
+    a.href = s.url;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+
+    const num = document.createElement("div");
+    num.className = "source-num";
+    num.textContent = i + 1;
+
+    const body = document.createElement("div");
+    body.className = "source-body";
+
+    const title = document.createElement("div");
+    title.className = "source-title";
+    title.textContent = s.title;
+
+    const snip = document.createElement("div");
+    snip.className = "source-snippet";
+    snip.textContent = s.snippet || "";
+
+    const url = document.createElement("div");
+    url.className = "source-url";
+    url.textContent = s.url;
+
+    body.append(title, snip, url);
+    a.append(num, body);
+    sourceList.appendChild(a);
+  });
+  sourcesBox.style.display = "block";
+}
+
+document.getElementById("chips").addEventListener("click", (e) => {
+  const chip = e.target.closest(".chip");
+  if (!chip) return;
+  input.value = chip.textContent;
+  form.requestSubmit();
+});
+
+copyBtn.addEventListener("click", async () => {
+  if (!lastAnswer) return;
+  try {
+    await navigator.clipboard.writeText(lastAnswer);
+    copyBtn.textContent = "Copied!";
+    setTimeout(() => (copyBtn.textContent = "Copy"), 1600);
+  } catch {
+    copyBtn.textContent = "Failed";
+    setTimeout(() => (copyBtn.textContent = "Copy"), 1600);
+  }
+});
+
+function sendFeedback(value) {
+  upBtn.classList.toggle("active", value === "up");
+  downBtn.classList.toggle("active", value === "down");
+  fbThanks.classList.add("show");
+}
+upBtn.addEventListener("click", () => sendFeedback("up"));
+downBtn.addEventListener("click", () => sendFeedback("down"));
+
+const savedTheme = localStorage.getItem("asknova-theme");
+if (savedTheme) {
+  document.documentElement.dataset.theme = savedTheme;
+  themeBtn.textContent = savedTheme === "light" ? "☀️" : "🌙";
+}
+themeBtn.addEventListener("click", () => {
+  const next = document.documentElement.dataset.theme === "light" ? "dark" : "light";
+  document.documentElement.dataset.theme = next;
+  themeBtn.textContent = next === "light" ? "☀️" : "🌙";
+  localStorage.setItem("asknova-theme", next);
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "/" && document.activeElement !== input) {
+    e.preventDefault();
+    input.focus();
+  }
+});
+</script>
+</body>
+</html>
